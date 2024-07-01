@@ -99,9 +99,9 @@ void PerceptiveMpcInterface::loadSettings(const std::string& taskFile) {
   {
     // task space tracking cost
     QuadraticEndeffectorTrackingCostConfig config;
-    ocs2::loadData::loadEigenMatrix(taskFile, "ee_tracking_task.Q", config.eePoseQ);
-    ocs2::loadData::loadEigenMatrix(taskFile, "ee_tracking_task.R", config.R);
-    ocs2::loadData::loadEigenMatrix(taskFile, "ee_tracking_task.Q_final", config.eePoseQFinal);
+    ocs2::loadData::loadEigenMatrix(taskFile, "ee_tracking_task.Q", config.eePoseQ); // tracking的 deltaxT Q deltaX项
+    ocs2::loadData::loadEigenMatrix(taskFile, "ee_tracking_task.R", config.R);  // deltauT R deltau 项
+    ocs2::loadData::loadEigenMatrix(taskFile, "ee_tracking_task.Q_final", config.eePoseQFinal); // 终端cost项
     config.kinematics = kinematicsInterface_;
 
     std::cerr << "Q:       \n" << config.eePoseQ << std::endl;
@@ -114,6 +114,7 @@ void PerceptiveMpcInterface::loadSettings(const std::string& taskFile) {
     weightedCostFunctions.push_back(std::make_pair(1, eeCost));
   }
 
+  // 避障相关参数
   bool useObstacleCost = false;
   ocs2::loadData::loadCppDataType(taskFile, "obstacle_cost.useObstacleCost", useObstacleCost);
   std::cerr << "useObstacleCost:       \n" << useObstacleCost << std::endl;
@@ -121,31 +122,32 @@ void PerceptiveMpcInterface::loadSettings(const std::string& taskFile) {
   if (useObstacleCost) {
     perceptive_mpc::BaseAvoidanceCostConfig config;
 
-    ocs2::loadData::loadCppDataType(taskFile, "obstacle_cost.delta", config.delta);
+    ocs2::loadData::loadCppDataType(taskFile, "obstacle_cost.delta", config.delta); // RBF的参数
     std::cerr << "obstacleCost.delta_:       \n" << config.delta << std::endl;
 
-    ocs2::loadData::loadCppDataType(taskFile, "obstacle_cost.mu", config.mu);
+    ocs2::loadData::loadCppDataType(taskFile, "obstacle_cost.mu", config.mu); // RBF的参数
     std::cerr << "obstacleCost.mu:       \n" << config.mu << std::endl;
 
-    ocs2::loadData::loadCppDataType(taskFile, "obstacle_cost.sigma", config.sigma);
+    ocs2::loadData::loadCppDataType(taskFile, "obstacle_cost.sigma", config.sigma); // ?
     std::cerr << "obstacleCost.sigma:       \n" << config.sigma << std::endl;
 
-    ocs2::loadData::loadCppDataType(taskFile, "obstacle_cost.widthX", config.widthX);
+    ocs2::loadData::loadCppDataType(taskFile, "obstacle_cost.widthX", config.widthX); // 底盘宽度
     std::cerr << "obstacleCost.widthX:       \n" << config.widthX << std::endl;
 
-    ocs2::loadData::loadCppDataType(taskFile, "obstacle_cost.widthY", config.widthY);
+    ocs2::loadData::loadCppDataType(taskFile, "obstacle_cost.widthY", config.widthY); // 底盘长度
     std::cerr << "obstacleCost.widthY:       \n" << config.widthY << std::endl;
 
-    ocs2::loadData::loadCppDataType(taskFile, "obstacle_cost.reach", config.reach);
+    ocs2::loadData::loadCppDataType(taskFile, "obstacle_cost.reach", config.reach); // 
     std::cerr << "obstacleCost.reach:       \n" << config.reach << std::endl;
 
     config.kinematics = kinematicsInterface_;
     std::shared_ptr<BaseAvoidanceCost> baseAvoidanceCost(new BaseAvoidanceCost(config));
-    baseAvoidanceCost->initialize("base_avoidance_cost", libraryFolder_, modelSettings_.recompileLibraries_);
+    baseAvoidanceCost->initialize("base_avoidance_cost", libraryFolder_, modelSettings_.recompileLibraries_); // 底盘避障？
 
     weightedCostFunctions.push_back(std::make_pair(1, baseAvoidanceCost));
   }
 
+  // 机械稳定性相关参数
   bool useZMPConstraint = false;
   ocs2::loadData::loadCppDataType(taskFile, "stability_soft_constraint.activate", useZMPConstraint);
   std::cerr << "stability_soft_constraint.activate:       \n" << useZMPConstraint << std::endl;
@@ -153,17 +155,18 @@ void PerceptiveMpcInterface::loadSettings(const std::string& taskFile) {
   if (useZMPConstraint) {
     StabilitySoftConstraint::Settings settings;
     settings.kinematics = kinematicsInterface_;
-    ocs2::loadData::loadCppDataType(taskFile, "stability_soft_constraint.support_circle_radius", settings.supportCircleRadius);
+    ocs2::loadData::loadCppDataType(taskFile, "stability_soft_constraint.support_circle_radius", settings.supportCircleRadius); // 支撑多边形内切圆半径
     std::cerr << "stability_soft_constraint.support_circle_radius:       \n" << settings.supportCircleRadius << std::endl;
-    ocs2::loadData::loadCppDataType(taskFile, "stability_soft_constraint.mu", settings.relaxedBarrierConfig.mu);
+    ocs2::loadData::loadCppDataType(taskFile, "stability_soft_constraint.mu", settings.relaxedBarrierConfig.mu); // RBF的参数
     std::cerr << "stability_soft_constraint.mu:       \n" << settings.relaxedBarrierConfig.mu << std::endl;
-    ocs2::loadData::loadCppDataType(taskFile, "stability_soft_constraint.delta", settings.relaxedBarrierConfig.delta);
+    ocs2::loadData::loadCppDataType(taskFile, "stability_soft_constraint.delta", settings.relaxedBarrierConfig.delta); // RBF的参数
     std::cerr << "stability_soft_constraint.delta:       \n" << settings.relaxedBarrierConfig.delta << std::endl;
     auto stabilityConstraint = std::make_shared<StabilitySoftConstraint>(settings);
     stabilityConstraint->initialize("stability_constraint", libraryFolder_, modelSettings_.recompileLibraries_);
     weightedCostFunctions.push_back(std::make_pair(1, stabilityConstraint));
   }
 
+  // 为什么还有个单独的voxblox_cost
   if (voxbloxConfig_) {
     ocs2::loadData::loadCppDataType(taskFile, "voxblox_cost.mu", voxbloxConfig_->mu);
     std::cerr << "voxblox_cost.mu:       \n" << voxbloxConfig_->mu << std::endl;
@@ -178,11 +181,11 @@ void PerceptiveMpcInterface::loadSettings(const std::string& taskFile) {
   costPtr_.reset(new cost_linear_combination_t(weightedCostFunctions));
 
   Eigen::VectorXd lowerLimits((int)Definitions::ARM_STATE_DIM_);
-  ocs2::loadData::loadEigenMatrix(taskFile, "limits.lower", lowerLimits);
+  ocs2::loadData::loadEigenMatrix(taskFile, "limits.lower", lowerLimits); // 关节角度下限，向量
   Eigen::VectorXd upperLimits((int)Definitions::ARM_STATE_DIM_);
-  ocs2::loadData::loadEigenMatrix(taskFile, "limits.upper", upperLimits);
+  ocs2::loadData::loadEigenMatrix(taskFile, "limits.upper", upperLimits); // 关节角度上限，向量
   Eigen::VectorXd velocityLimits((int)Definitions::INPUT_DIM_);
-  ocs2::loadData::loadEigenMatrix(taskFile, "limits.velocity", velocityLimits);
+  ocs2::loadData::loadEigenMatrix(taskFile, "limits.velocity", velocityLimits); // 关节速度上限，向量
   std::cerr << "lowerLimits:       \n" << lowerLimits << std::endl;
   std::cerr << "upperLimits:       \n" << upperLimits << std::endl;
   std::cerr << "velocityLimits:    \n" << velocityLimits << std::endl;
@@ -192,7 +195,7 @@ void PerceptiveMpcInterface::loadSettings(const std::string& taskFile) {
   std::cerr << "useJointSpaceConstraints:       \n" << useJointSpaceConstraints << std::endl;
   if (useJointSpaceConstraints) {
     double positionMpcMarginDeg = 0;
-    ocs2::loadData::loadCppDataType(taskFile, "limits.position_mpc_margin_deg", positionMpcMarginDeg);
+    ocs2::loadData::loadCppDataType(taskFile, "limits.position_mpc_margin_deg", positionMpcMarginDeg); // 给关节角度上限和下限加一个margin
     std::cerr << "positionMpcMarginDeg:       \n" << positionMpcMarginDeg << std::endl;
     double positionMpcMarginRad = positionMpcMarginDeg / 180 * M_PI;
 
@@ -220,9 +223,9 @@ void PerceptiveMpcInterface::setupConstraints(const Eigen::VectorXd& lowerLimits
                                               const Eigen::VectorXd& velocityLimits, double positionMpcMarginRad) {
   std::unique_ptr<linear_constraint_t> linearConstraintPtr(new linear_constraint_t());
 
-  linearConstraintPtr->numInequalityConstraint_ = 2 * Definitions::ARM_STATE_DIM_ + 2 * Definitions::INPUT_DIM_;
+  linearConstraintPtr->numInequalityConstraint_ = 2 * Definitions::ARM_STATE_DIM_ + 2 * Definitions::INPUT_DIM_; // 机械臂关节角度限制 + 机械臂关节角速度限制 + 底盘线速度、角速度限制
   Eigen::VectorXd h0Eigen(linearConstraintPtr->numInequalityConstraint_);
-  h0Eigen << -1 * (lowerLimits + Eigen::VectorXd::Ones(Definitions::ARM_STATE_DIM_) * positionMpcMarginRad),
+  h0Eigen << -1 * (lowerLimits + Eigen::VectorXd::Ones(Definitions::ARM_STATE_DIM_) * positionMpcMarginRad), // margin的实现
       1 * (upperLimits - Eigen::VectorXd::Ones(Definitions::ARM_STATE_DIM_) * positionMpcMarginRad), velocityLimits, velocityLimits;
   linearConstraintPtr->h0_.resize(linearConstraintPtr->numInequalityConstraint_);
   for (int i = 0; i < linearConstraintPtr->numInequalityConstraint_; i++) {

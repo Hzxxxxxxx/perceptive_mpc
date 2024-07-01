@@ -83,8 +83,8 @@ bool KinematicSimulation::run() {
   ROS_INFO("Joint state subscriber is connected.");
 
   desiredEndEffectorPoseSubscriber_ =
-      nh_.subscribe("/perceptive_mpc/desired_end_effector_pose", 1, &KinematicSimulation::desiredEndEffectorPoseCb, this);
-  desiredEndEffectorWrenchPoseTrajectorySubscriber_ = nh_.subscribe("/perceptive_mpc/desired_end_effector_wrench_pose_trajectory", 1,
+      nh_.subscribe("/perceptive_mpc/desired_end_effector_pose", 1, &KinematicSimulation::desiredEndEffectorPoseCb, this); // 期望末端执行器轨迹的话题
+  desiredEndEffectorWrenchPoseTrajectorySubscriber_ = nh_.subscribe("/perceptive_mpc/desired_end_effector_wrench_pose_trajectory", 1, 
                                                                     &KinematicSimulation::desiredWrenchPoseTrajectoryCb, this);
   endEffectorPosePublisher_ = nh_.advertise<geometry_msgs::PoseStamped>("measured_end_effector_pose", 100);
 

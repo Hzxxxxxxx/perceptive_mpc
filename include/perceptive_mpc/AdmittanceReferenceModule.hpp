@@ -57,10 +57,10 @@ class AdmittanceReferenceModule {
   void setDesiredEndeffectorWrench(const geometry_msgs::Wrench::ConstPtr&);
 
  protected:
-  kindr::WrenchD desiredEEWrench_;
+  kindr::WrenchD desiredEEWrench_; // 期望wrench
   std::mutex desiredEEWrenchMutex_;
 
-  Eigen::Vector3d forcePGains_;
+  Eigen::Vector3d forcePGains_; //这个让Kp为对角阵，对角线的三个元素吗？
   Eigen::Vector3d torquePGains_;
   Eigen::Vector3d forceIGains_;
   Eigen::Vector3d torqueIGains_;

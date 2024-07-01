@@ -76,11 +76,12 @@ nav_msgs::Path AdmittanceReferenceModule::adaptPath(double dt, const nav_msgs::P
   antiWindup();
 
   Eigen::Vector3d rotationImg = wrenchError.getTorque().toImplementation().cwiseProduct(torquePGains_) +
-                                wrenchIntegral_.getTorque().toImplementation().cwiseProduct(torqueIGains_);
+                                wrenchIntegral_.getTorque().toImplementation().cwiseProduct(torqueIGains_);  // torque的PI控制的公式
 
   kindr::RotationQuaternionD deltaRot;
   Eigen::Vector3d deltaPos;
 
+  //好像是向量转四元数的公式？
   double r = rotationImg.norm();
   if (r > 0) {
     deltaRot.w() = std::cos(r);
@@ -91,14 +92,14 @@ nav_msgs::Path AdmittanceReferenceModule::adaptPath(double dt, const nav_msgs::P
   }
 
   deltaPos = wrenchError.getForce().toImplementation().cwiseProduct(forcePGains_) +
-             wrenchIntegral_.getForce().toImplementation().cwiseProduct(forceIGains_);
+             wrenchIntegral_.getForce().toImplementation().cwiseProduct(forceIGains_);  // force的PI控制的公式
 
   nav_msgs::Path path = rawPath;
 
   if (path.poses.size() == 0) {
     wrenchIntegral_.setZero();
   }
-
+  // 对path上的每个点施加deltaPose和deltaRoation
   for (int i = 0; i < path.poses.size(); i++) {
     kindr::HomogeneousTransformationPosition3RotationQuaternionD pose;
     kindr_ros::convertFromRosGeometryMsg(path.poses[i].pose, pose);
@@ -140,6 +141,7 @@ void AdmittanceReferenceModule::adaptPath(double dt, eigen_pose_vector_t& path, 
   }
 }
 
+// 积分防饱和，积分量不能超出上下限
 void AdmittanceReferenceModule::antiWindup() {
   wrenchIntegral_.getTorque().toImplementation() =
       wrenchIntegral_.getTorque().toImplementation().cwiseMax(-wrenchIntegralMax_.getTorque().toImplementation());

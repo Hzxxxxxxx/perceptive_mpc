@@ -34,13 +34,13 @@
 namespace perceptive_mpc {
 
 enum Definitions : size_t {
-  BASE_STATE_DIM_ = 7,
+  BASE_STATE_DIM_ = 7, // 4(q) + 3(r) = 7
   ARM_STATE_DIM_ = 6,
   STATE_DIM_ = BASE_STATE_DIM_ + ARM_STATE_DIM_,  // [I_x_b I_y_b \theta_b \phi^T]^T
   BASE_INPUT_DIM_ = 2,
   ARM_INPUT_DIM_ = 6,
   INPUT_DIM_ = BASE_INPUT_DIM_ + ARM_INPUT_DIM_,  // \dot{ [B_x_b \theta_b \phi^T]^T }
-  POSE_DIM = 7,
+  POSE_DIM = 7, // 末端执行器pose, 4(q) + 3(r)
   WRENCH_DIM = 6,
   REFERENCE_DIM = POSE_DIM + WRENCH_DIM
 };
