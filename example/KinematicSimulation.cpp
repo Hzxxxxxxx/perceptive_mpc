@@ -75,7 +75,7 @@ bool KinematicSimulation::run() {
   initializeCostDesiredTrajectory();
 
   // Init ros stuff
-  armStatePublisher_ = nh_.advertise<sensor_msgs::JointState>("/joint_states", 10);
+  armStatePublisher_ = nh_.advertise<sensor_msgs::JointState>("/joint_states", 10); // 当前机械臂各个关节角角度？
   ROS_INFO("Waiting for joint states subscriber ...");
   while (ros::ok() && armStatePublisher_.getNumSubscribers() == 0) {
     ros::Rate(100).sleep();
@@ -261,7 +261,7 @@ bool KinematicSimulation::mpcUpdate(ros::Rate rate) {
       if (esdfCachingServer_) {
         esdfCachingServer_->updateInterpolator();
       }
-      mpcInterface_->advanceMpc();
+      mpcInterface_->advanceMpc();  // MPC向前迭代一步（具体是什么含义？）
     } catch (const std::runtime_error& ex) {
       ROS_ERROR_STREAM("runtime_error occured!");
       ROS_ERROR_STREAM("Caught exception while calling [KinematicSimulation::mpcUpdate]. Message: " << ex.what());
@@ -279,6 +279,7 @@ bool KinematicSimulation::mpcUpdate(ros::Rate rate) {
   return true;
 }
 
+// 发布各类状态
 bool KinematicSimulation::tfUpdate(ros::Rate rate) {
   while (ros::ok()) {
     try {
@@ -347,26 +348,28 @@ void KinematicSimulation::initializeCostDesiredTrajectory() {
   costDesiredTrajectories_.desiredInputTrajectory().push_back(InputVector::Zero());
 }
 
+// 期望末端执行器位姿的回调函数 Cb for callback
 void KinematicSimulation::desiredEndEffectorPoseCb(const geometry_msgs::PoseStampedConstPtr& msgPtr) {
   geometry_msgs::Pose currentEndEffectorPose;
   kindr_ros::convertToRosGeometryMsg(getEndEffectorPose(), currentEndEffectorPose);
 
-  perceptive_mpc::WrenchPoseTrajectory wrenchPoseTrajectory;
+  perceptive_mpc::WrenchPoseTrajectory wrenchPoseTrajectory;  // wrench和pose的轨迹，在 msg/WrenchPoseTrajectory.msg 中定义
   wrenchPoseTrajectory.header.stamp = ros::Time::now();
   wrenchPoseTrajectory.posesWrenches.resize(2);
   wrenchPoseTrajectory.posesWrenches[0].header.stamp = wrenchPoseTrajectory.header.stamp;
   wrenchPoseTrajectory.posesWrenches[0].pose = currentEndEffectorPose;
   tf2::toMsg(defaultForce_, wrenchPoseTrajectory.posesWrenches[0].wrench.force);
-  tf2::toMsg(defaultTorque_, wrenchPoseTrajectory.posesWrenches[0].wrench.torque);
+  tf2::toMsg(defaultTorque_, wrenchPoseTrajectory.posesWrenches[0].wrench.torque); // 设置为一个长度为2的轨迹，第一个点是当前pose+默认wrench
 
   wrenchPoseTrajectory.posesWrenches[1].header.stamp = wrenchPoseTrajectory.header.stamp;
   wrenchPoseTrajectory.posesWrenches[1].pose = msgPtr->pose;
   tf2::toMsg(defaultForce_, wrenchPoseTrajectory.posesWrenches[1].wrench.force);
-  tf2::toMsg(defaultTorque_, wrenchPoseTrajectory.posesWrenches[1].wrench.torque);
+  tf2::toMsg(defaultTorque_, wrenchPoseTrajectory.posesWrenches[1].wrench.torque); // 第二个点是接收到的 desired pose + 默认 wrench
 
   desiredWrenchPoseTrajectoryCb(wrenchPoseTrajectory);
 }
 
+// 给wrenchPoseTrajectory添加合理的time stamp，保存到 costDesiredTrajectories_ 中
 void KinematicSimulation::desiredWrenchPoseTrajectoryCb(const perceptive_mpc::WrenchPoseTrajectory& wrenchPoseTrajectory) {
   boost::unique_lock<boost::shared_mutex> costDesiredTrajectoryLock(costDesiredTrajectoryMutex_);
   costDesiredTrajectories_.clear();
@@ -378,7 +381,7 @@ void KinematicSimulation::desiredWrenchPoseTrajectoryCb(const perceptive_mpc::Wr
   for (int i = 0; i < N; i++) {
     kindr::HomTransformQuatD desiredPose;
     reference_vector_t reference;
-    kindr_ros::convertFromRosGeometryMsg(wrenchPoseTrajectory.posesWrenches[i].pose, desiredPose);
+    kindr_ros::convertFromRosGeometryMsg(wrenchPoseTrajectory.posesWrenches[i].pose, desiredPose); // poseWrenches[i]保存到 desiredPose 变量中
     reference.head<Definitions::POSE_DIM>().head<4>() = desiredPose.getRotation().toImplementation().coeffs();
     reference.head<Definitions::POSE_DIM>().tail<3>() = desiredPose.getPosition().toImplementation();
     Eigen::Vector3d force;
@@ -394,13 +397,13 @@ void KinematicSimulation::desiredWrenchPoseTrajectoryCb(const perceptive_mpc::Wr
     if (i == 0) {
       costDesiredTrajectories_.desiredTimeTrajectory()[i] = ros::Time::now().toSec();
     } else {
-      auto minTimeLinear = (desiredPose.getPosition() - lastPose.getPosition()).norm() / maxLinearVelocity_;
-      auto minTimeAngular = std::abs(desiredPose.getRotation().getDisparityAngle(lastPose.getRotation())) / maxAngularVelocity_;
+      auto minTimeLinear = (desiredPose.getPosition() - lastPose.getPosition()).norm() / maxLinearVelocity_;  // position 差值（距离） 除以 最大线速度
+      auto minTimeAngular = std::abs(desiredPose.getRotation().getDisparityAngle(lastPose.getRotation())) / maxAngularVelocity_; // rotation 差值（转交） 除以 最大角速度
 
       auto lastOriginalTimeStamp = ros::Time(wrenchPoseTrajectory.posesWrenches[i - 1].header.stamp).toSec();
       auto currentOriginalTimeStamp = ros::Time(wrenchPoseTrajectory.posesWrenches[i].header.stamp).toSec();
       double originalTimingDiff = currentOriginalTimeStamp - lastOriginalTimeStamp;
-      double segmentDuration = std::max(originalTimingDiff, std::max(minTimeLinear, minTimeAngular));
+      double segmentDuration = std::max(originalTimingDiff, std::max(minTimeLinear, minTimeAngular));  // 时间差 取 wrenchPoseTrajectory中的原始时间差、平移最小时间、旋转最小时间 的最大值
 
       costDesiredTrajectories_.desiredTimeTrajectory()[i] = costDesiredTrajectories_.desiredTimeTrajectory()[i - 1] + segmentDuration;
     }
@@ -409,6 +412,7 @@ void KinematicSimulation::desiredWrenchPoseTrajectoryCb(const perceptive_mpc::Wr
   }
 }
 
+// 发布base的tf
 void KinematicSimulation::publishBaseTransform(const Observation& observation) {
   geometry_msgs::TransformStamped base_transform;
   base_transform.header.frame_id = "odom";
@@ -429,6 +433,7 @@ void KinematicSimulation::publishBaseTransform(const Observation& observation) {
   tfBroadcaster_.sendTransform(base_transform);
 }
 
+// 发布机械臂各个关节角角度到 /joint_states 话题。该话题被 /robot_state_publisher 节点订阅，会自动发布相关tf，最终在rviz中显示
 void KinematicSimulation::publishArmState(const Observation& observation) {
   sensor_msgs::JointState armState;
   armState.header.stamp = ros::Time::now();
@@ -441,10 +446,11 @@ void KinematicSimulation::publishArmState(const Observation& observation) {
   armStatePublisher_.publish(armState);
 }
 
+// 用正运动学计算当前末端执行器位姿（世界坐标系）并发布
 void KinematicSimulation::publishEndEffectorPose() {
   geometry_msgs::PoseStamped endEffectorPoseMsg;
   static int endEffectorPoseCounter = 0;
-  auto currentEndEffectorPose = getEndEffectorPose();
+  auto currentEndEffectorPose = getEndEffectorPose(); //注意这个调用
   Eigen::Vector3d currentPosition = currentEndEffectorPose.getPosition().toImplementation();
   Eigen::Quaterniond currentRotation = currentEndEffectorPose.getRotation().getUnique().toImplementation();
 
@@ -486,7 +492,7 @@ kindr::HomTransformQuatD KinematicSimulation::getEndEffectorPose() {
   {
     boost::shared_lock<boost::shared_mutex> lock(observationMutex_);
     Eigen::Matrix<double, 4, 4> endEffectorToWorldTransform;
-    Eigen::VectorXd currentState = observation_.state();
+    Eigen::VectorXd currentState = observation_.state(); // observation是ocs中的SystemObservation结构体，包含当前时间，系统输入，系统状态。ocs2_mpc/include/ocs2_mpc/SystemObservation.h
 
     MabiKinematics<double> kinematics(kinematicInterfaceConfig_);
     kinematics.computeState2EndeffectorTransform(endEffectorToWorldTransform, currentState);
