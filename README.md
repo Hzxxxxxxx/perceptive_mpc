@@ -50,6 +50,36 @@ or pull the image from dockerhub:
 docker pull rslethz/perceptive_mpc
 ```
 
+## Create Docker Container
+
+Create and run container:
+```bash
+docker run -it \
+   --net=host \
+   --gpus all \
+   --runtime nvidia \
+   --env="DISPLAY=$DISPLAY" \
+   --env="QT_X11_NO_MITSHM=1" \
+   --env="NVIDIA_VISIBLE_DEVICES=all" \
+   --env="NVIDIA_DRIVER_CAPABILITIES=all" \
+   --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
+   --volume="$HOME/.Xauthority:/root/.Xauthority:rw" \
+   --device /dev/dri \
+   --name="mpc_demo" \
+   perceptive_mpc:v0.3 \
+   bash
+```
+
+Start the stopped container:
+```bash
+docker start -i mpc_demo
+```
+
+Open a new bash shell for a started container:
+```bash
+docker exec -it mpc_demo bash
+```
+
 ## Demos
 
 ### Motion Planning
