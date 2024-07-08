@@ -64,6 +64,7 @@ docker run -it \
    --env="NVIDIA_DRIVER_CAPABILITIES=all" \
    --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
    --volume="$HOME/.Xauthority:/root/.Xauthority:rw" \
+   --volume "/dev/shm:/dev/shm" \
    --device /dev/dri \
    --name="mpc_demo" \
    perceptive_mpc:v0.3 \
