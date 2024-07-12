@@ -66,8 +66,8 @@ bool KinematicSimulation::run() {
 #ifdef USE_MABI
   config.kinematicsInterface = std::make_shared<MabiKinematics<ad_scalar_t>>(kinematicInterfaceConfig_);
 #else
-  // config.kinematicsInterface = std::make_shared<UR5Kinematics<ad_scalar_t>>(kinematicInterfaceConfig_);
-  config.kinematicsInterface = std::make_shared<RM65Kinematics<ad_scalar_t>>(kinematicInterfaceConfig_);
+  config.kinematicsInterface = std::make_shared<UR5Kinematics<ad_scalar_t>>(kinematicInterfaceConfig_);
+  // config.kinematicsInterface = std::make_shared<RM65Kinematics<ad_scalar_t>>(kinematicInterfaceConfig_);
 #endif
   config.voxbloxConfig = configureCollisionAvoidance(config.kinematicsInterface);
   ocs2Interface_.reset(new PerceptiveMpcInterface(config));
@@ -129,8 +129,8 @@ void KinematicSimulation::loadTransforms() {
 #ifdef USE_MABI
   MabiKinematics<double> kinematics(kinematicInterfaceConfig_);
 #else
-  // UR5Kinematics<double> kinematics(kinematicInterfaceConfig_);
-  RM65Kinematics<double> kinematics(kinematicInterfaceConfig_);
+  UR5Kinematics<double> kinematics(kinematicInterfaceConfig_);
+  // RM65Kinematics<double> kinematics(kinematicInterfaceConfig_);
 #endif
   tf2_ros::Buffer tfBuffer;
   tf2_ros::TransformListener tfListener(tfBuffer);
@@ -161,8 +161,8 @@ void KinematicSimulation::loadTransforms() {
 #ifdef USE_MABI
       transformStamped = tfBuffer.lookupTransform(kinematics.toolMountLinkName(), "ENDEFFECTOR", ros::Time(0), ros::Duration(1.0));
 #else
-      // transformStamped = tfBuffer.lookupTransform(kinematics.toolMountLinkName(), "ee_link", ros::Time(0), ros::Duration(1.0));
-      transformStamped = tfBuffer.lookupTransform(kinematics.toolMountLinkName(), "Link6", ros::Time(0), ros::Duration(1.0));
+      transformStamped = tfBuffer.lookupTransform(kinematics.toolMountLinkName(), "ee_link", ros::Time(0), ros::Duration(1.0));
+      // transformStamped = tfBuffer.lookupTransform(kinematics.toolMountLinkName(), "Link6", ros::Time(0), ros::Duration(1.0));
 #endif
     } catch (tf2::TransformException& ex) {
       ROS_ERROR("%s", ex.what());
@@ -484,8 +484,8 @@ void KinematicSimulation::publishArmState(const Observation& observation) {
 #ifdef USE_MABI
   armState.name = {"SH_ROT", "SH_FLE", "EL_FLE", "EL_ROT", "WR_FLE", "WR_ROT"};
 #else
-  // armState.name = {"shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_1_joint", "wrist_2_joint", "wrist_3_joint"};
-  armState.name = {"Link1, Link2, Link3, Link4, Link5, Link6"};
+  armState.name = {"shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_1_joint", "wrist_2_joint", "wrist_3_joint"}; //UR5
+  // armState.name = {"Link1, Link2, Link3, Link4, Link5, Link6"};  //rm_65
 #endif
   armState.position.resize(Definitions::ARM_STATE_DIM_);
   Eigen::VectorXd armConfiguration = observation.state().tail<6>();
@@ -521,8 +521,8 @@ void KinematicSimulation::publishZmp(const Observation& observation, const ocs2:
 #ifdef USE_MABI
   MabiKinematics<double> kinematicsInterface(kinematicInterfaceConfig_);
 #else
-  // UR5Kinematics<double> kinematicsInterface(kinematicInterfaceConfig_);
-  RM65Kinematics<double> kinematicsInterface(kinematicInterfaceConfig_);
+  UR5Kinematics<double> kinematicsInterface(kinematicInterfaceConfig_);
+  // RM65Kinematics<double> kinematicsInterface(kinematicInterfaceConfig_);
 #endif
 
   Eigen::Vector3d com = kinematicsInterface.getCOMBaseFrame(observation.state());
@@ -552,8 +552,8 @@ kindr::HomTransformQuatD KinematicSimulation::getEndEffectorPose() {
 #ifdef USE_MABI
   MabiKinematics<double> kinematics(kinematicInterfaceConfig_);
 #else
-  // UR5Kinematics<double> kinematics(kinematicInterfaceConfig_);
-  RM65Kinematics<double> kinematics(kinematicInterfaceConfig_);
+  UR5Kinematics<double> kinematics(kinematicInterfaceConfig_);
+  // RM65Kinematics<double> kinematics(kinematicInterfaceConfig_);
 #endif
     kinematics.computeState2EndeffectorTransform(endEffectorToWorldTransform, currentState);
     Eigen::Quaterniond eigenBaseRotation(endEffectorToWorldTransform.topLeftCorner<3, 3>());

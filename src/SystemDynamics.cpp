@@ -38,23 +38,9 @@ void SystemDynamics::systemFlowMap(ad_scalar_t time, const ad_dynamic_vector_t& 
                                    ad_dynamic_vector_t& stateDerivative) const {
 
   Eigen::Quaternion<ad_scalar_t> currentRotation(state.head<Definitions::BASE_STATE_DIM_>().head<4>());
-  // std::cout << "[SystemDynamics::systemFlowMap]" << std::endl;
-  // auto coeffs = currentRotation.coeffs();  // 获取四元数的系数
-  // std::cout << "Quaternion (x, y, z, w): ";
-  // for (int i = 0; i < 4; ++i) {
-  //     // std::cout << static_cast<double>(coeffs[i]) << " ";
-  //     std::cout << coeffs.coeff(i) << " ";  // 使用coeff()方法获取系数值
-  // }
-  // std::cout << std::endl;
-
-
-  // Eigen::Quaternion<ad_scalar_t> normalizedRotation = currentRotation.normalized();
-
-// #ifdef USE_MABI                              
+                           
   ad_scalar_t linearVelocity = input.head<Definitions::BASE_INPUT_DIM_>()[0];
   ad_scalar_t omega = input.head<Definitions::BASE_INPUT_DIM_>()[1];
-
-  // Eigen::Quaternion<ad_scalar_t> currentRotation(state.head<Definitions::BASE_STATE_DIM_>().head<4>());
 
   // derivative of orientation quaternion: https://fgiesen.wordpress.com/2012/08/24/quaternion-differentiation/
   Eigen::Quaternion<ad_scalar_t> deltaRotation;
@@ -68,20 +54,6 @@ void SystemDynamics::systemFlowMap(ad_scalar_t time, const ad_dynamic_vector_t& 
   linearVelocityVector[0] = linearVelocity;
   stateDerivative.head<Definitions ::BASE_STATE_DIM_>().tail<3>() = currentRotation * linearVelocityVector;
   stateDerivative.head<Definitions ::BASE_STATE_DIM_>().tail<3>()[2] = 0;
-
-// #else
-//   // 底盘的角速度和线速度导数设置为零
-//   Eigen::Quaternion<ad_scalar_t> zeroDeltaRotation;
-//   zeroDeltaRotation.w() = 1; // 单位四元数表示无旋转
-//   zeroDeltaRotation.x() = 0;
-//   zeroDeltaRotation.y() = 0;
-//   zeroDeltaRotation.z() = 0;
-//   stateDerivative.head<Definitions::BASE_STATE_DIM_>().head<4>() = (normalizedRotation * zeroDeltaRotation).coeffs();
-//   // 底盘的位置导数设置为零向量
-//   Eigen::Matrix<ad_scalar_t, 3, 1> zeroLinearVelocityVector = Eigen::Matrix<ad_scalar_t, 3, 1>::Zero();
-//   stateDerivative.head<Definitions::BASE_STATE_DIM_>().tail<3>() = zeroLinearVelocityVector;
-//   stateDerivative.head<Definitions ::BASE_STATE_DIM_>().tail<3>()[2] = 0;
-// #endif
 
   // Arm 的stateDerivative
   stateDerivative.tail<Definitions ::ARM_STATE_DIM_>() = input.tail<Definitions::ARM_STATE_DIM_>();

@@ -82,7 +82,7 @@ add_library(${PROJECT_NAME}
   # src/Conversions.cpp
   src/kinematics/KinematicsInterface.cpp
   src/kinematics/mabi/MabiKinematics.cpp
-  src/kinematics/rm_65/RM65Kinematics.cpp
+  # src/kinematics/rm_65/RM65Kinematics.cpp
   src/kinematics/ur10/UR10Kinematics.cpp
   src/kinematics/ur5/UR5Kinematics.cpp
   src/kinematics/ur3/UR3Kinematics.cpp
