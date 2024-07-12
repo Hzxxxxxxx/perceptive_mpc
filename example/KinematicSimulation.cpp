@@ -31,6 +31,8 @@
 #include <example/KinematicSimulation.h>
 
 #include <perceptive_mpc/kinematics/mabi/MabiKinematics.hpp>
+#include <perceptive_mpc/kinematics/ur5/UR5Kinematics.hpp>
+#include <perceptive_mpc/kinematics/rm_65/RM65Kinematics.hpp>
 
 #include <tf2_eigen/tf2_eigen.h>
 #include <tf2_ros/transform_listener.h>
@@ -40,6 +42,12 @@
 #include <perceptive_mpc/costs/InterpolatePoseTrajectory.h>
 
 #include <kindr_ros/kindr_ros.hpp>
+
+#include <memory>
+
+// bool use_mabi = true;
+
+// #define USE_MABI
 
 using namespace perceptive_mpc;
 
@@ -55,7 +63,12 @@ bool KinematicSimulation::run() {
 
   PerceptiveMpcInterfaceConfig config;
   config.taskFileName = mpcTaskFile_;
+#ifdef USE_MABI
   config.kinematicsInterface = std::make_shared<MabiKinematics<ad_scalar_t>>(kinematicInterfaceConfig_);
+#else
+  // config.kinematicsInterface = std::make_shared<UR5Kinematics<ad_scalar_t>>(kinematicInterfaceConfig_);
+  config.kinematicsInterface = std::make_shared<RM65Kinematics<ad_scalar_t>>(kinematicInterfaceConfig_);
+#endif
   config.voxbloxConfig = configureCollisionAvoidance(config.kinematicsInterface);
   ocs2Interface_.reset(new PerceptiveMpcInterface(config));
   mpcInterface_ = std::make_shared<MpcInterface>(ocs2Interface_->getMpc());
@@ -111,13 +124,21 @@ bool KinematicSimulation::run() {
 }
 
 void KinematicSimulation::loadTransforms() {
+  // std::unique_ptr<KinematicsInterface<double>> kinematics;
+  // if(use_mabi){
+#ifdef USE_MABI
   MabiKinematics<double> kinematics(kinematicInterfaceConfig_);
+#else
+  // UR5Kinematics<double> kinematics(kinematicInterfaceConfig_);
+  RM65Kinematics<double> kinematics(kinematicInterfaceConfig_);
+#endif
   tf2_ros::Buffer tfBuffer;
   tf2_ros::TransformListener tfListener(tfBuffer);
   {
     geometry_msgs::TransformStamped transformStamped;
     try {
       transformStamped = tfBuffer.lookupTransform("base_link", kinematics.armMountLinkName(), ros::Time(0), ros::Duration(1.0));
+      // transformStamped = tfBuffer.lookupTransform("base", kinematics.armMountLinkName(), ros::Time(0), ros::Duration(1.0));
     } catch (tf2::TransformException& ex) {
       ROS_ERROR("%s", ex.what());
       throw;
@@ -125,7 +146,7 @@ void KinematicSimulation::loadTransforms() {
     Eigen::Quaterniond quat(transformStamped.transform.rotation.w, transformStamped.transform.rotation.x,
                             transformStamped.transform.rotation.y, transformStamped.transform.rotation.z);
 
-    kinematicInterfaceConfig_.transformBase_X_ArmMount = Eigen::Matrix4d::Identity();
+    kinematicInterfaceConfig_.transformBase_X_ArmMount = Eigen::Matrix4d::Identity(); // base_link 到 arm_mount link 的变换. 对于mabi， arm_mount link的名字是 arm_mount
     kinematicInterfaceConfig_.transformBase_X_ArmMount.block<3, 3>(0, 0) = quat.toRotationMatrix();
 
     kinematicInterfaceConfig_.transformBase_X_ArmMount(0, 3) = transformStamped.transform.translation.x;
@@ -137,7 +158,12 @@ void KinematicSimulation::loadTransforms() {
   {
     geometry_msgs::TransformStamped transformStamped;
     try {
+#ifdef USE_MABI
       transformStamped = tfBuffer.lookupTransform(kinematics.toolMountLinkName(), "ENDEFFECTOR", ros::Time(0), ros::Duration(1.0));
+#else
+      // transformStamped = tfBuffer.lookupTransform(kinematics.toolMountLinkName(), "ee_link", ros::Time(0), ros::Duration(1.0));
+      transformStamped = tfBuffer.lookupTransform(kinematics.toolMountLinkName(), "Link6", ros::Time(0), ros::Duration(1.0));
+#endif
     } catch (tf2::TransformException& ex) {
       ROS_ERROR("%s", ex.what());
       throw;
@@ -175,6 +201,7 @@ void KinematicSimulation::parseParameters() {
   }
 }
 
+// 这个是controller 进程，高频，200Hz
 bool KinematicSimulation::trackerLoop(ros::Rate rate) {
   while (ros::ok()) {
     try {
@@ -193,15 +220,17 @@ bool KinematicSimulation::trackerLoop(ros::Rate rate) {
       Observation observation;
       {
         boost::unique_lock<boost::shared_mutex> lockGuard(observationMutex_);
-        observation_.state() = optimalState_;
+        observation_.state() = optimalState_;  // 这里把 optimalState_ 更新给 observation_ ，是除了初始化之外唯一更新 observation_ 的地方
         observation_.time() = ros::Time::now().toSec();
-        observation = observation_;
+        observation = observation_;  
       }
 
       MpcInterface::input_vector_t controlInput;
       MpcInterface::state_vector_t optimalState;
       size_t subsystem;
       try {
+        // 这两个函数的声明： ocs2/ocs2_comm_interfaces/include/ocs2_comm_interfaces/ocs2_interfaces/MRT_BASE.h
+        // 实现： ocs2/ocs2_comm_interfaces/include/ocs2_comm_interfaces/ocs2_interfaces/implementation/MRT_BASE.h
         mpcInterface_->updatePolicy();
         mpcInterface_->evaluatePolicy(observation.time(), observation.state(), optimalState, controlInput, subsystem);
         // TODO: for integration on hardware, send the computed control inputs to the motor controllers
@@ -221,7 +250,7 @@ bool KinematicSimulation::trackerLoop(ros::Rate rate) {
                                         << "    optimalState:  " << optimalState.transpose() << std::endl
                                         << "    controlInput:  " << controlInput.transpose() << std::endl
                                         << std::endl);
-      optimalState_ = optimalState;
+      optimalState_ = optimalState; // 这里把 optimalState 更新给 optimalState_ ，是除了初始化之外唯一更新 optimalState_ 的地方
 
     } catch (const std::runtime_error& ex) {
       ROS_ERROR_STREAM("runtime_error occured!");
@@ -237,6 +266,7 @@ bool KinematicSimulation::trackerLoop(ros::Rate rate) {
   return true;
 }
 
+// 求解MPC的进程？
 bool KinematicSimulation::mpcUpdate(ros::Rate rate) {
   while (ros::ok()) {
     if (mpcUpdateFailed_) {
@@ -417,6 +447,9 @@ void KinematicSimulation::publishBaseTransform(const Observation& observation) {
   geometry_msgs::TransformStamped base_transform;
   base_transform.header.frame_id = "odom";
   base_transform.child_frame_id = "base_link";
+  // base_transform.child_frame_id = "base";
+
+#ifdef USE_MABI
   const Eigen::Quaterniond currentRotation = Eigen::Quaterniond(observation.state().head<Definitions::BASE_STATE_DIM_>().head<4>());
   const Eigen::Matrix<double, 3, 1> currentPosition = observation.state().head<Definitions::BASE_STATE_DIM_>().tail<3>();
 
@@ -429,6 +462,17 @@ void KinematicSimulation::publishBaseTransform(const Observation& observation) {
   base_transform.transform.rotation.z = currentRotation.coeffs()(2);
   base_transform.transform.rotation.w = currentRotation.coeffs()(3);
 
+#else
+  base_transform.transform.translation.x = 0;
+  base_transform.transform.translation.y = 0;
+  base_transform.transform.translation.z = 0;
+
+  base_transform.transform.rotation.x = 0;
+  base_transform.transform.rotation.y = 0;
+  base_transform.transform.rotation.z = 0;
+  base_transform.transform.rotation.w = 1;
+#endif
+
   base_transform.header.stamp = ros::Time::now();
   tfBroadcaster_.sendTransform(base_transform);
 }
@@ -437,7 +481,12 @@ void KinematicSimulation::publishBaseTransform(const Observation& observation) {
 void KinematicSimulation::publishArmState(const Observation& observation) {
   sensor_msgs::JointState armState;
   armState.header.stamp = ros::Time::now();
+#ifdef USE_MABI
   armState.name = {"SH_ROT", "SH_FLE", "EL_FLE", "EL_ROT", "WR_FLE", "WR_ROT"};
+#else
+  // armState.name = {"shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_1_joint", "wrist_2_joint", "wrist_3_joint"};
+  armState.name = {"Link1, Link2, Link3, Link4, Link5, Link6"};
+#endif
   armState.position.resize(Definitions::ARM_STATE_DIM_);
   Eigen::VectorXd armConfiguration = observation.state().tail<6>();
   for (size_t joint_idx = 0; joint_idx < Definitions::ARM_STATE_DIM_; joint_idx++) {
@@ -469,7 +518,13 @@ void KinematicSimulation::publishEndEffectorPose() {
 }
 
 void KinematicSimulation::publishZmp(const Observation& observation, const ocs2::CostDesiredTrajectories& costDesiredTrajectories) {
+#ifdef USE_MABI
   MabiKinematics<double> kinematicsInterface(kinematicInterfaceConfig_);
+#else
+  // UR5Kinematics<double> kinematicsInterface(kinematicInterfaceConfig_);
+  RM65Kinematics<double> kinematicsInterface(kinematicInterfaceConfig_);
+#endif
+
   Eigen::Vector3d com = kinematicsInterface.getCOMBaseFrame(observation.state());
   geometry_msgs::PointStamped comMsg;
   comMsg.header.frame_id = "base_link";
@@ -494,7 +549,12 @@ kindr::HomTransformQuatD KinematicSimulation::getEndEffectorPose() {
     Eigen::Matrix<double, 4, 4> endEffectorToWorldTransform;
     Eigen::VectorXd currentState = observation_.state(); // observation是ocs中的SystemObservation结构体，包含当前时间，系统输入，系统状态。ocs2_mpc/include/ocs2_mpc/SystemObservation.h
 
-    MabiKinematics<double> kinematics(kinematicInterfaceConfig_);
+#ifdef USE_MABI
+  MabiKinematics<double> kinematics(kinematicInterfaceConfig_);
+#else
+  // UR5Kinematics<double> kinematics(kinematicInterfaceConfig_);
+  RM65Kinematics<double> kinematics(kinematicInterfaceConfig_);
+#endif
     kinematics.computeState2EndeffectorTransform(endEffectorToWorldTransform, currentState);
     Eigen::Quaterniond eigenBaseRotation(endEffectorToWorldTransform.topLeftCorner<3, 3>());
     return kindr::HomTransformQuatD(kindr::Position3D(endEffectorToWorldTransform.topRightCorner<3, 1>()),

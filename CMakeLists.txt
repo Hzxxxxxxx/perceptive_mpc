@@ -79,9 +79,10 @@ add_library(${PROJECT_NAME}
   src/costs/PointsOnRobot.cpp
   src/costs/StabilitySoftConstraint.cpp
   src/OperatingPoint.cpp
-  src/Conversions.cpp
+  # src/Conversions.cpp
   src/kinematics/KinematicsInterface.cpp
   src/kinematics/mabi/MabiKinematics.cpp
+  src/kinematics/rm_65/RM65Kinematics.cpp
   src/kinematics/ur10/UR10Kinematics.cpp
   src/kinematics/ur5/UR5Kinematics.cpp
   src/kinematics/ur3/UR3Kinematics.cpp

@@ -40,8 +40,13 @@ namespace perceptive_mpc {
 template <typename SCALAR_T>
 class UR5Kinematics : public KinematicsInterface<SCALAR_T> {
  public:
-  std::string armMountLinkName() const override { return "base"; }
-  std::string toolMountLinkName() const override { return "wrist_3_link"; }
+  using Base = KinematicsInterface<SCALAR_T>;
+  UR5Kinematics(const KinematicInterfaceConfig& config); // 原版代码没有这两行。居然都没有声明构造函数？
+
+  // std::string armMountLinkName() const override { return "base"; }
+  std::string armMountLinkName() const override { return "base_link"; }
+  // std::string toolMountLinkName() const override { return "wrist_3_link"; }
+  std::string toolMountLinkName() const override { return "ee_link"; }
 
  protected:
   Eigen::Matrix<SCALAR_T, 4, 4> computeArmMountToToolMountTransform(const Eigen::Matrix<SCALAR_T, 6, 1>& armState) const override;
@@ -51,6 +56,9 @@ class UR5Kinematics : public KinematicsInterface<SCALAR_T> {
       const Eigen::Matrix4d& transformBase_X_ArmBase = Eigen::Matrix4d::Identity(),
       const Eigen::Matrix4d& transformToolMount_X_Endeffector = Eigen::Matrix4d::Identity(),
       const Eigen::Matrix<SCALAR_T, 4, 4>& transformWorld_X_Base = Eigen::Matrix<SCALAR_T, 4, 4>::Identity()) const override;
+  
+  double getArmMass() const override; // 原版代码也没有声明这两个函数。在基类里是纯虚函数，派生类必须声明和定义。
+  Eigen::Matrix<SCALAR_T, 3, 1> getArmCOM(const Eigen::Matrix<SCALAR_T, 6, 1>& armState) const override;
 };
 
 extern template class UR5Kinematics<double>;

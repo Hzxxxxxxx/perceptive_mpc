@@ -29,6 +29,8 @@
 #include <Eigen/Dense>
 #include <perceptive_mpc/kinematics/KinematicsInterface.hpp>
 
+// #define USE_MABI
+
 using namespace perceptive_mpc;
 
 template <typename SCALAR_T>
@@ -37,6 +39,7 @@ KinematicsInterface<SCALAR_T>::KinematicsInterface(const KinematicInterfaceConfi
 template <typename SCALAR_T>
 void KinematicsInterface<SCALAR_T>::computeState2EndeffectorTransform(Eigen::Matrix<SCALAR_T, 4, 4>& transform,
                                                                       const Eigen::Matrix<SCALAR_T, -1, 1>& state) const {
+#ifdef USE_MABI                                                                        
   if (state.size() != 13) {
     std::stringstream ss;
     ss << "Error: state.size()=" << state.size() << "!=13";
@@ -44,6 +47,7 @@ void KinematicsInterface<SCALAR_T>::computeState2EndeffectorTransform(Eigen::Mat
     std::cerr << std::endl << errorMessage << std::endl << std::endl;
     throw std::runtime_error(ss.str());
   }
+
 
   Eigen::Quaternion<SCALAR_T> baseOrientation;
   baseOrientation.coeffs() = state.template head<7>().template head<4>();
@@ -57,6 +61,13 @@ void KinematicsInterface<SCALAR_T>::computeState2EndeffectorTransform(Eigen::Mat
 
   // world -> endeffector
   transform = homWorld2Base * computeBase2EndeffectorTransform(armState);
+
+#else
+  const Eigen::Matrix<SCALAR_T, 6, 1>& armState = state.template tail<6>();
+  transform = computeBase2EndeffectorTransform(armState);
+
+#endif
+
 }
 
 template <typename SCALAR_T>
@@ -70,6 +81,7 @@ Eigen::Matrix<SCALAR_T, 4, 4> KinematicsInterface<SCALAR_T>::computeBase2Endeffe
 template <typename SCALAR_T>
 Eigen::Matrix<SCALAR_T, 3, -1> KinematicsInterface<SCALAR_T>::computeState2MultiplePointsOnRobot(
     const Eigen::Matrix<SCALAR_T, -1, 1>& state, const std::vector<std::vector<double>>& points) const {
+#ifdef USE_MABI
   if (state.size() != 13) {
     std::stringstream ss;
     ss << "Error: state.size()=" << state.size() << "!=13";
@@ -77,6 +89,7 @@ Eigen::Matrix<SCALAR_T, 3, -1> KinematicsInterface<SCALAR_T>::computeState2Multi
     std::cerr << std::endl << errorMessage << std::endl << std::endl;
     throw std::runtime_error(ss.str());
   }
+#endif
 
   int dim = 0;
   for (int i = 0; i < points.size(); i++) {
@@ -91,6 +104,7 @@ Eigen::Matrix<SCALAR_T, 3, -1> KinematicsInterface<SCALAR_T>::computeState2Multi
   int resultIndex = 0;
   int linkIndex;
 
+#ifdef USE_MABI
   Eigen::Quaternion<SCALAR_T> baseOrientation;
   baseOrientation.coeffs() = state.template head<7>().template head<4>();
   const Eigen::Matrix<SCALAR_T, 3, 1>& basePosition = state.template head<7>().template tail<3>();
@@ -102,6 +116,13 @@ Eigen::Matrix<SCALAR_T, 3, -1> KinematicsInterface<SCALAR_T>::computeState2Multi
 
   return computeArmState2MultiplePointsOnRobot(armState, points, config_.transformBase_X_ArmMount, config_.transformToolMount_X_Endeffector,
                                                worldXFrBase);
+                                              
+#else
+  const Eigen::Matrix<SCALAR_T, 6, 1>& armState = state.template tail<6>();
+  Eigen::Matrix<SCALAR_T, 4, 4> identity_matrix = Eigen::Matrix<SCALAR_T, 4, 4>::Identity();
+  return computeArmState2MultiplePointsOnRobot(armState, points, config_.transformBase_X_ArmMount, config_.transformToolMount_X_Endeffector,
+                                               identity_matrix);
+#endif                                                                       
 }
 
 template <typename SCALAR_T>
@@ -195,6 +216,7 @@ Eigen::Matrix<SCALAR_T, 3, 1> KinematicsInterface<SCALAR_T>::getZMPBaseFrame(
 
 template <typename SCALAR_T>
 Eigen::Matrix<SCALAR_T, 4, 4> KinematicsInterface<SCALAR_T>::getWorldToBaseTransform(const Eigen::Matrix<SCALAR_T, -1, 1>& state) const {
+#ifdef USE_MABI
   Eigen::Quaternion<SCALAR_T> baseOrientation;
   baseOrientation.coeffs() = state.template head<7>().template head<4>();
   const Eigen::Matrix<SCALAR_T, 3, 1>& basePosition = state.template head<7>().template tail<3>();
@@ -204,6 +226,10 @@ Eigen::Matrix<SCALAR_T, 4, 4> KinematicsInterface<SCALAR_T>::getWorldToBaseTrans
   homWorld2Base.template topLeftCorner<3, 3>() = baseOrientation.toRotationMatrix();
   homWorld2Base.template topRightCorner<3, 1>() = basePosition;
   return homWorld2Base;
+#else
+  Eigen::Matrix<SCALAR_T, 4, 4> identity_matrix = Eigen::Matrix<SCALAR_T, 4, 4>::Identity();
+  return identity_matrix;
+#endif
 }
 
 template class perceptive_mpc::KinematicsInterface<double>;

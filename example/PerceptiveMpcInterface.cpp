@@ -34,6 +34,9 @@
 #include <perceptive_mpc/costs/VoxbloxCost.h>
 
 #include <perceptive_mpc/kinematics/mabi/MabiKinematics.hpp>
+#include <perceptive_mpc/kinematics/ur5/UR5Kinematics.hpp>
+
+
 
 #include <cmath>
 

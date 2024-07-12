@@ -148,6 +148,18 @@ Eigen::Matrix<SCALAR_T, 3, -1> UR5Kinematics<SCALAR_T>::computeArmState2Multiple
 
   return result;
 }
+template <typename SCALAR_T>
+double UR5Kinematics<SCALAR_T>::getArmMass() const {
+  return 10.0; //TODO
+}
+template <typename SCALAR_T>
+Eigen::Matrix<SCALAR_T, 3, 1> UR5Kinematics<SCALAR_T>::getArmCOM(const Eigen::Matrix<SCALAR_T, 6, 1>& armState) const {
+  Eigen::Matrix<SCALAR_T, 3, 1> com;
+  com.setZero(); //TODO
+  return com;
+}
+template <typename SCALAR_T>
+UR5Kinematics<SCALAR_T>::UR5Kinematics(const KinematicInterfaceConfig& config) : Base(config) {}
 
 template class perceptive_mpc::UR5Kinematics<double>;
 template class perceptive_mpc::UR5Kinematics<CppAD::AD<CppAD::cg::CG<double>>>;

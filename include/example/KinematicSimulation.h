@@ -63,7 +63,8 @@ namespace perceptive_mpc {
 class KinematicSimulation {
  public:
   typedef ocs2::SystemObservation<perceptive_mpc::STATE_DIM_, perceptive_mpc::INPUT_DIM_> Observation;
-  typedef ocs2::MPC_MRT_Interface<perceptive_mpc::STATE_DIM_, perceptive_mpc::INPUT_DIM_> MpcInterface;  // ocs2_mpc/include/ocs2_mpc/MPC_MRT_Interface.h
+  // ocs2/ocs2_comm_interfaces/include/ocs2_comm_interfaces/ocs2_interfaces/implementation/MPC_MRT_Interface.h
+  typedef ocs2::MPC_MRT_Interface<perceptive_mpc::STATE_DIM_, perceptive_mpc::INPUT_DIM_> MpcInterface;  // ocs2_mpc/include/ocs2_mpc/MPC_MRT_Interface.h  
   typedef MpcInterface::input_vector_t InputVector;
   using reference_vector_t = Eigen::Matrix<double, Definitions::REFERENCE_DIM, 1>;
 

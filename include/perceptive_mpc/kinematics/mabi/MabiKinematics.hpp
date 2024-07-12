@@ -41,8 +41,8 @@ template <typename SCALAR_T>
 class MabiKinematics : public KinematicsInterface<SCALAR_T> {
  public:
   using Base = KinematicsInterface<SCALAR_T>;
-
   MabiKinematics(const KinematicInterfaceConfig& config);
+  
   std::string armMountLinkName() const override { return "arm_mount"; }
   std::string toolMountLinkName() const override { return "WRIST_2"; }
 

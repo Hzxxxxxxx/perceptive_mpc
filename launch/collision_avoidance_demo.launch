@@ -5,7 +5,9 @@
     <!--     Name of the task file which defines the mpc problem settings-->
     <arg name="mpc_task_file"       default="task.info"/>
     <!-- Set path of robot description -->
-    <arg name="description_file"    default="$(find perceptive_mpc)/urdf/mabi/mabi_mobile.urdf"/>
+    <!-- <arg name="description_file"    default="$(find perceptive_mpc)/urdf/mabi/mabi_mobile.urdf"/> -->
+    <arg name="description_file"    default="$(find perceptive_mpc)/urdf/ur5/ur5_robot.urdf"/>
+    
     <!-- Set rviz configuration -->
     <arg name="rvizconfig"          default="$(find perceptive_mpc)/config/demo.rviz"/>
 
