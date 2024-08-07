@@ -68,7 +68,7 @@ docker run -it \
    --volume="/home/txszju/Code/addx/perceptive_mpc_ws/src:/usr/src/perceptive_mpc_ws/src" \
    --device /dev/dri \
    --name="mpc_demo" \
-   perceptive_mpc:v0.3 \
+   registry.cn-hangzhou.aliyuncs.com/hezixiang_docker/perceptive_mpc:v0.3 \
    bash
 ```
 
