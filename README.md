@@ -47,7 +47,7 @@ docker image build -t perceptive_mpc:v0.3 .
 ```
 or pull the image from dockerhub:
 ```
-docker pull rslethz/perceptive_mpc
+docker pull rslethz/perceptive_mpc:v0.3
 ```
 
 ## Demos
