@@ -47,7 +47,7 @@ docker image build -t perceptive_mpc:v0.3 .
 ```
 or pull the image from dockerhub:
 ```
-docker pull rslethz/perceptive_mpc
+docker pull rslethz/perceptive_mpc:v0.3
 ```
 
 ## Create Docker Container
@@ -99,7 +99,7 @@ docker container run -it --rm --name mpc_demo \
  -e DISPLAY=$DISPLAY \
  -v /tmp/.X11-unix:/tmp/.X11-unix \
  --device /dev/dri \
- perceptive_mpc:v0.3 ./src/perceptive_mpc/scripts/run_demo.sh
+ registry.cn-hangzhou.aliyuncs.com/hezixiang_docker/perceptive_mpc:v0.3 ./src/perceptive_mpc/scripts/run_demo.sh
 ```
 
 ### Collision Avoidance
@@ -119,7 +119,7 @@ docker container run -it --rm --name collision_avoidance_demo \
  -e DISPLAY=$DISPLAY \
  -v /tmp/.X11-unix:/tmp/.X11-unix \
  --device /dev/dri \
- perceptive_mpc:v0.3 ./src/perceptive_mpc/scripts/run_demo_collision_avoidance.sh
+ registry.cn-hangzhou.aliyuncs.com/hezixiang_docker/perceptive_mpc:v0.3 ./src/perceptive_mpc/scripts/run_demo_collision_avoidance.sh
 ```
 After everything started, load a map by running:
 ```
